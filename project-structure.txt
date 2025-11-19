@@ -1,0 +1,61 @@
+find . -maxdepth 5 \
+  -not -path "./dist*" \
+  -not -path "./node_modules*" \
+| sed 's/[^-][^\/]*\//  /g' > project-structure.txt
+
+
+
+.
+  tsconfig.json
+  .gitignore
+  .env
+  src
+    app.controller.ts
+    app.service.ts
+    common
+      interceptors
+      pipes
+      guards
+      decorators
+      filters
+    main.ts
+    modules
+      events
+        events.module.ts
+      auth
+        auth.module.ts
+      bookings
+        bookings.module.ts
+      payments
+        payments.module.ts
+      tickets
+        tickets.module.ts
+      users
+        users.module.ts
+      admin
+        admin.module.ts
+    config
+    database
+      drizzle.module.ts
+      schema
+        users.ts
+      drizzle.service.ts
+    app.module.ts
+    supabase
+      supabase.module.ts
+      supabase.service.ts
+  drizzle
+    0000_wooden_wildside.sql
+    meta
+      _journal.json
+      0000_snapshot.json
+  .prettierrc
+  package.json
+  yarn.lock
+  README.md
+  env.d.ts
+  project-structure.txt
+  eslint.config.mjs
+  tsconfig.build.json
+  nest-cli.json
+  drizzle.config.ts
