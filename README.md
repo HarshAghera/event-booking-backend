@@ -33,7 +33,7 @@
 - Booking & checkout with payment integration (mock/Stripe)
 - QR code generation for tickets
 - Admin dashboard with analytics
-- MongoDB database with Mongoose schemas
+- Postgres  database with Drizzle schemas
 - Validation, error handling, and clean API responses
 
 ---
@@ -41,13 +41,12 @@
 ## Tech Stack
 
 - **Backend Framework:** NestJS (Node.js + TypeScript)
-- **Database:** MongoDB + Mongoose
+- **Database:** Postgres  + Supabase + Drizzle
 - **Authentication:** JWT (access + refresh tokens)
 - **Validation:** class-validator + class-transformer
 - **QR / PDF Generation:** qrcode / pdfkit
 - **Payments:** Stripe / Mocked
-- **Testing:** Jest (unit & e2e tests)
-- **Deployment Ready:** Render / Railway / Heroku
+- **Deployment Ready:** Render
 
 ---
 
