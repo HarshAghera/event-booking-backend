@@ -46,16 +46,35 @@ export class AuthService {
 
     if (error) throw new BadRequestException(error.message);
 
-    // You may also fetch user profile from drizzle
     const [user] = await this.db.client
       .select()
       .from(users)
       .where(eq(users.email, email));
 
     return {
-      message: 'Login successful',
       session: data.session,
       user,
+    };
+  }
+
+  async refresh(refreshToken: string) {
+    if (!refreshToken) {
+      throw new BadRequestException('No refresh token provided');
+    }
+
+    const { data, error } = await this.supabase.client.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error) throw new BadRequestException(error.message);
+
+    if (!data.session) {
+      throw new BadRequestException('Session refresh failed');
+    }
+
+    return {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
     };
   }
 }
