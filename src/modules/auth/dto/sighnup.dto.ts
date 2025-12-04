@@ -1,13 +1,31 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsEnum,
+  MinLength,
+  IsOptional,
+} from 'class-validator';
+
+export enum UserRole {
+  CUSTOMER = 'customer',
+  ORGANIZER = 'organizer',
+  SUPER_ADMIN = 'superAdmin',
+}
 
 export class SignupDto {
-  @IsEmail()
+  @IsEmail({}, { message: 'Email must be valid' })
   email: string;
 
-  @IsString()
-  @MinLength(6)
+  @IsNotEmpty({ message: 'Password is required' })
+  @MinLength(6, { message: 'Password must be at least 6 characters' })
   password: string;
 
-  @IsString()
+  @IsNotEmpty({ message: 'Name is required' })
   name: string;
+
+  @IsOptional()
+  @IsEnum(UserRole, {
+    message: 'Role must be customer, organizer, or superAdmin',
+  })
+  role: UserRole;
 }

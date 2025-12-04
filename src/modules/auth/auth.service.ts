@@ -1,22 +1,26 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { DrizzleService } from '../../database/drizzle.service';
 import { users } from '../../database/schema/users';
 import { eq } from 'drizzle-orm';
 import { SignupDto } from './dto/sighnup.dto';
 import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly db: DrizzleService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async signup(dto: SignupDto) {
-    const { email, password, name } = dto;
-
-    // Supabase Auth signup
+    const { email, password, name, role } = dto;
 
     const { data, error } = await this.supabase.client.auth.signUp({
       email,
@@ -24,16 +28,16 @@ export class AuthService {
     });
 
     if (error) throw new BadRequestException(error.message);
-
     if (!data.user) throw new BadRequestException('User creation failed');
 
     await this.db.client.insert(users).values({
       id: data.user.id,
       email,
       name,
+      role: role ?? 'customer',
     });
 
-    return { message: 'Signup successful', user: data.user };
+    return { message: 'Signup successful' };
   }
 
   async login(dto: LoginDto) {
@@ -44,15 +48,36 @@ export class AuthService {
       password,
     });
 
-    if (error) throw new BadRequestException(error.message);
+    if (error) throw new UnauthorizedException(error.message);
 
     const [user] = await this.db.client
       .select()
       .from(users)
-      .where(eq(users.email, email));
+      .where(eq(users.id, data.user.id));
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      { secret: process.env.JWT_SECRET, expiresIn: '15m' },
+    );
+
+    const refreshToken = await this.jwtService.signAsync(
+      {
+        sub: user.id,
+        role: user.role,
+      },
+      { secret: process.env.JWT_SECRET, expiresIn: '7d' },
+    );
 
     return {
-      session: data.session,
+      message: 'Login successful',
+      accessToken,
+      refreshToken,
       user,
     };
   }
@@ -62,19 +87,42 @@ export class AuthService {
       throw new BadRequestException('No refresh token provided');
     }
 
-    const { data, error } = await this.supabase.client.auth.refreshSession({
-      refresh_token: refreshToken,
-    });
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_SECRET,
+      });
 
-    if (error) throw new BadRequestException(error.message);
+      const [user] = await this.db.client
+        .select()
+        .from(users)
+        .where(eq(users.id, payload.sub));
 
-    if (!data.session) {
-      throw new BadRequestException('Session refresh failed');
+      if (!user) throw new UnauthorizedException('User not found');
+
+      const newAccessToken = await this.jwtService.signAsync(
+        {
+          sub: user.id,
+          email: user.email,
+          role: user.role,
+        },
+        { secret: process.env.JWT_SECRET, expiresIn: '15m' },
+      );
+
+      const newRefreshToken = await this.jwtService.signAsync(
+        {
+          sub: user.id,
+          role: user.role,
+        },
+        { secret: process.env.JWT_SECRET, expiresIn: '7d' },
+      );
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (err) {
+      console.log(err);
+      throw new UnauthorizedException('Invalid refresh token');
     }
-
-    return {
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
-    };
   }
 }

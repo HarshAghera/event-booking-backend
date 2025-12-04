@@ -20,17 +20,16 @@ export class AuthController {
   ) {
     const result = await this.authService.login(dto);
 
-    // Save refresh token in httpOnly cookie
-    res.cookie('refresh_token', result.session.refresh_token, {
+    res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
-      secure: true, // set true if using HTTPS
+      secure: true,
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24, //A day
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     });
 
     return {
       message: 'Login successful',
-      access_token: result.session.access_token,
+      accessToken: result.accessToken,
       user: result.user,
     };
   }
@@ -44,16 +43,15 @@ export class AuthController {
 
     const result = await this.authService.refresh(refreshToken);
 
-    // rotate refresh token
-    res.cookie('refresh_token', result.refresh_token, {
+    res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     });
 
     return {
-      access_token: result.access_token,
+      accessToken: result.accessToken,
     };
   }
 
