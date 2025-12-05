@@ -32,8 +32,8 @@ export class JwtGuard implements CanActivate {
     }
 
     // 2. Verify JWT
-    const secret = process.env.JWT_ACCESS_SECRET;
-    if (!secret) throw new Error('JWT_ACCESS_SECRET missing');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET missing');
 
     let decoded: any;
     try {

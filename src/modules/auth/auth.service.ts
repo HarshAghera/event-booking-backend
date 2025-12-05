@@ -7,7 +7,7 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { DrizzleService } from '../../database/drizzle.service';
 import { users } from '../../database/schema/users';
 import { eq } from 'drizzle-orm';
-import { SignupDto } from './dto/sighnup.dto';
+import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 
@@ -91,7 +91,7 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_SECRET,
       });
-
+      console.log(refreshToken);
       const [user] = await this.db.client
         .select()
         .from(users)

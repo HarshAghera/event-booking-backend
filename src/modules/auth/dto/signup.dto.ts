@@ -1,3 +1,4 @@
+import { UserRole } from '@src/common/enums/user-role.enum';
 import {
   IsEmail,
   IsNotEmpty,
@@ -5,12 +6,6 @@ import {
   MinLength,
   IsOptional,
 } from 'class-validator';
-
-export enum UserRole {
-  CUSTOMER = 'customer',
-  ORGANIZER = 'organizer',
-  SUPER_ADMIN = 'superAdmin',
-}
 
 export class SignupDto {
   @IsEmail({}, { message: 'Email must be valid' })
