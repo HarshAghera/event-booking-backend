@@ -6,10 +6,11 @@ import {
   Body,
   Delete,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserService } from '@src/modules/users/users.service';
+import { UserService } from './users.service';
 import { Roles } from '@src/common/decorators/role.decorator';
 import { JwtGuard } from '@src/common/guards/jwt.guard';
 import { RoleGuard } from '@src/common/guards/role.guard';
@@ -22,28 +23,47 @@ export class UserController {
   @UseGuards(JwtGuard, RoleGuard)
   @Roles(UserRole.SUPER_ADMIN)
   @Get()
-  findAll() {
-    return this.userService.findAll();
+  async findAll() {
+    try {
+      return await this.userService.findAll();
+    } catch (err) {
+      throw err;
+    }
   }
 
   @UseGuards(JwtGuard, RoleGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.CUSTOMER)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    try {
+      if (!id) throw new BadRequestException('User ID is required');
+      return await this.userService.findOne(id);
+    } catch (err) {
+      throw err;
+    }
   }
 
   @UseGuards(JwtGuard, RoleGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.CUSTOMER)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.userService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    try {
+      if (!id) throw new BadRequestException('User ID is required');
+      return await this.userService.update(id, dto);
+    } catch (err) {
+      throw err;
+    }
   }
 
   @UseGuards(JwtGuard, RoleGuard)
   @Roles(UserRole.SUPER_ADMIN, UserRole.CUSTOMER)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(id);
+  async remove(@Param('id') id: string) {
+    try {
+      if (!id) throw new BadRequestException('User ID is required');
+      return await this.userService.remove(id);
+    } catch (err) {
+      throw err;
+    }
   }
 }

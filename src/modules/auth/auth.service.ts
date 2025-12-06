@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { DrizzleService } from '../../database/drizzle.service';
@@ -22,76 +23,78 @@ export class AuthService {
   async signup(dto: SignupDto) {
     const { email, password, name, role } = dto;
 
-    const { data, error } = await this.supabase.client.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await this.supabase.client.auth.signUp({
+        email,
+        password,
+      });
 
-    if (error) throw new BadRequestException(error.message);
-    if (!data.user) throw new BadRequestException('User creation failed');
+      if (error) throw new BadRequestException(error.message);
+      if (!data.user) throw new InternalServerErrorException('Signup failed');
 
-    await this.db.client.insert(users).values({
-      id: data.user.id,
-      email,
-      name,
-      role: role ?? 'customer',
-    });
+      await this.db.client.insert(users).values({
+        id: data.user.id,
+        email,
+        name,
+        role: role ?? 'customer',
+      });
 
-    return { message: 'Signup successful' };
+      return { message: 'Signup successful' };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      console.error('Signup Error:', err);
+      throw new InternalServerErrorException('Failed to sign up user');
+    }
   }
 
   async login(dto: LoginDto) {
     const { email, password } = dto;
 
-    const { data, error } = await this.supabase.client.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } =
+        await this.supabase.client.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-    if (error) throw new UnauthorizedException(error.message);
+      if (error) throw new UnauthorizedException(error.message);
 
-    const [user] = await this.db.client
-      .select()
-      .from(users)
-      .where(eq(users.id, data.user.id));
+      const [user] = await this.db.client
+        .select()
+        .from(users)
+        .where(eq(users.id, data.user.id));
 
-    if (!user) throw new UnauthorizedException('User not found');
+      if (!user) throw new UnauthorizedException('User not found');
 
-    const accessToken = await this.jwtService.signAsync(
-      {
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      { secret: process.env.JWT_SECRET, expiresIn: '15m' },
-    );
+      const accessToken = await this.jwtService.signAsync(
+        { sub: user.id, email: user.email, role: user.role },
+        { secret: process.env.JWT_SECRET, expiresIn: '15m' },
+      );
 
-    const refreshToken = await this.jwtService.signAsync(
-      {
-        sub: user.id,
-        role: user.role,
-      },
-      { secret: process.env.JWT_SECRET, expiresIn: '7d' },
-    );
+      const refreshToken = await this.jwtService.signAsync(
+        { sub: user.id, role: user.role },
+        { secret: process.env.JWT_SECRET, expiresIn: '7d' },
+      );
 
-    return {
-      message: 'Login successful',
-      accessToken,
-      refreshToken,
-      user,
-    };
+      return {
+        message: 'Login successful',
+        accessToken,
+        refreshToken,
+        user,
+      };
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      console.error('Login Error:', err);
+      throw new InternalServerErrorException('Login failed');
+    }
   }
 
   async refresh(refreshToken: string) {
-    if (!refreshToken) {
-      throw new BadRequestException('No refresh token provided');
-    }
-
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_SECRET,
       });
-      console.log(refreshToken);
+
       const [user] = await this.db.client
         .select()
         .from(users)
@@ -100,19 +103,12 @@ export class AuthService {
       if (!user) throw new UnauthorizedException('User not found');
 
       const newAccessToken = await this.jwtService.signAsync(
-        {
-          sub: user.id,
-          email: user.email,
-          role: user.role,
-        },
+        { sub: user.id, email: user.email, role: user.role },
         { secret: process.env.JWT_SECRET, expiresIn: '15m' },
       );
 
       const newRefreshToken = await this.jwtService.signAsync(
-        {
-          sub: user.id,
-          role: user.role,
-        },
+        { sub: user.id, role: user.role },
         { secret: process.env.JWT_SECRET, expiresIn: '7d' },
       );
 
@@ -121,8 +117,8 @@ export class AuthService {
         refreshToken: newRefreshToken,
       };
     } catch (err) {
-      console.log(err);
-      throw new UnauthorizedException('Invalid refresh token');
+      console.error('Refresh Token Error:', err);
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
 }

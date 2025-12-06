@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  Res,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -9,8 +16,12 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
-  signup(@Body() dto: SignupDto) {
-    return this.authService.signup(dto);
+  async signup(@Body() dto: SignupDto) {
+    try {
+      return await this.authService.signup(dto);
+    } catch (err) {
+      throw err;
+    }
   }
 
   @Post('login')
@@ -18,20 +29,24 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.login(dto);
+    try {
+      const result = await this.authService.login(dto);
 
-    res.cookie('refresh_token', result.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
+      res.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      });
 
-    return {
-      message: 'Login successful',
-      accessToken: result.accessToken,
-      user: result.user,
-    };
+      return {
+        message: 'Login successful',
+        accessToken: result.accessToken,
+        user: result.user,
+      };
+    } catch (err) {
+      throw err;
+    }
   }
 
   @Post('refresh')
@@ -39,20 +54,23 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies['refresh_token'];
+    const token = req.cookies['refresh_token'];
+    if (!token) throw new BadRequestException('Refresh token missing');
 
-    const result = await this.authService.refresh(refreshToken);
+    try {
+      const result = await this.authService.refresh(token);
 
-    res.cookie('refresh_token', result.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
+      res.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      });
 
-    return {
-      accessToken: result.accessToken,
-    };
+      return { accessToken: result.accessToken };
+    } catch (err) {
+      throw err;
+    }
   }
 
   @Post('logout')
